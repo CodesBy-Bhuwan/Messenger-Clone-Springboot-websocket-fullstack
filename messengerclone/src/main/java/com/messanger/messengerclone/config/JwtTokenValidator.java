@@ -4,10 +4,17 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import javax.crypto.SecretKey;
 import java.io.IOException;
+import java.util.List;
 
 public class JwtTokenValidator extends OncePerRequestFilter{
 
@@ -24,11 +31,21 @@ public class JwtTokenValidator extends OncePerRequestFilter{
                 jwt=jwt.substring(7);
 
                 SecretKey key=Keys.hmacShaKeyFor(JwtConstant.SECRET_KEY.getBytes());
-                Claims claims=Jwts.perserBuilder().setSigningKey(key).build().parseClaimsJws(jwt).getBody();
+                Claims claim=Jwts.perserBuilder().setSigningKey(key).build().parseClaimsJws(jwt).getBody();
+
+                String username=String.valueOf(claim.get("username"));
+                String authorities =String.valueOf(claim.get("authorities"));
+
+                List<GrantedAuthority> auths= AuthorityUtils.commaSeparatedStringToAuthorityList(authorities);
+
+                Authentication authentication=new UsernamePasswordAuthenticationToken(username, null, auths);
+
+                SecurityContextHolder.getContext().setAuthentication(authentication);
 
 
             } catch (Exception e){
-//exception here
+
+                throw new BadCredentialsException("invalid token received. . .");
             }
         }
     }
